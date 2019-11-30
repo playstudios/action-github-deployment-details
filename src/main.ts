@@ -67,7 +67,7 @@ async function run() {
                 application: core.getInput('fallback_application', {required: true}),
                 valuesFile: core.getInput('fallback_values_file', {required: true}),
                 keyPaths: core.getInput('fallback_key_paths', {required: true}),
-                value: core.getInput('fallback_push_sha', {required: true}),
+                value: core.getInput('fallback_value', {required: true}),
             };
             return outputEvent(fallback);
 
