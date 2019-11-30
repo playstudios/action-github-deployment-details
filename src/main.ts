@@ -63,10 +63,10 @@ async function run() {
         case EVENT_PUSH:
             core.info('Using push event');
             let fallback = {
-                environment: core.getInput('fallback_push_sha', {required: true}),
-                application: core.getInput('fallback_push_sha', {required: true}),
-                valuesFile: core.getInput('fallback_push_sha', {required: true}),
-                keyPaths: core.getInput('fallback_push_sha', {required: true}),
+                environment: core.getInput('fallback_environment', {required: true}),
+                application: core.getInput('fallback_application', {required: true}),
+                valuesFile: core.getInput('fallback_values_file', {required: true}),
+                keyPaths: core.getInput('fallback_key_paths', {required: true}),
                 value: core.getInput('fallback_push_sha', {required: true}),
             };
             return outputEvent(fallback);
