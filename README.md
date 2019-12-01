@@ -1,113 +1,54 @@
-# Create a JavaScript Action using TypeScript
+# Deployment Details
 
-Use this template to bootstrap the creation of a JavaScript action.:rocket:
-
-This template includes compilication support, tests, a validation workflow, publishing, and versioning guidance.  
-
-If you are new, there's also a simpler introduction.  See the [Hello World JavaScript Action](https://github.com/actions/hello-world-javascript-action)
-
-## Create an action from this template
-
-Click the `Use this Template` and provide the new repo details for your action
-
-## Code in Master
-
-Install the dependencies  
-```bash
-$ npm install
-```
-
-Build the typescript
-```bash
-$ npm run build
-```
-
-Run the tests :heavy_check_mark:  
-```bash
-$ npm test
-
- PASS  ./index.test.js
-  ✓ throws invalid number (3ms)
-  ✓ wait 500 ms (504ms)
-  ✓ test runs (95ms)
-
-...
-```
-
-## Change action.yml
-
-The action.yml contains defines the inputs and output for your action.
-
-Update the action.yml with your name, description, inputs and outputs for your action.
-
-See the [documentation](https://help.github.com/en/articles/metadata-syntax-for-github-actions)
-
-## Change the Code
-
-Most toolkit and CI/CD operations involve async operations so the action is run in an async function.
-
-```javascript
-import * as core from '@actions/core';
-...
-
-async function run() {
-  try { 
-      ...
-  } 
-  catch (error) {
-    core.setFailed(error.message);
-  }
-}
-
-run()
-```
-
-See the [toolkit documentation](https://github.com/actions/toolkit/blob/master/README.md#packages) for the various packages.
-
-## Publish to a distribution branch
-
-Actions are run from GitHub repos.  We will create a releases branch and only checkin production modules (core in this case). 
-
-Comment out node_modules in .gitignore and create a releases/v1 branch
-```bash
-# comment out in distribution branches
-# node_modules/
-```
-
-```bash
-$ git checkout -b releases/v1
-$ git commit -a -m "prod dependencies"
-```
-
-```bash
-$ npm prune --production
-$ git add node_modules
-$ git commit -a -m "prod dependencies"
-$ git push origin releases/v1
-```
-
-Your action is now published! :rocket: 
-
-See the [versioning documentation](https://github.com/actions/toolkit/blob/master/docs/action-versioning.md)
-
-## Validate
-
-You can now validate the action by referencing the releases/v1 branch
-
-```yaml
-uses: actions/typescript-action@releases/v1
-with:
-  milliseconds: 1000
-```
-
-See the [actions tab](https://github.com/actions/javascript-action/actions) for runs of this action! :rocket:
+This action will output the details of a deployment or push event. The intention is to use it
+in a GitOps workflow for updating values in a yaml or json document.
 
 ## Usage:
 
-After testing you can [create a v1 tag](https://github.com/actions/toolkit/blob/master/docs/action-versioning.md) to reference the stable and tested action
+The following action will execute on a `deployment` or `push` event.
 
 ```yaml
-uses: actions/typescript-action@v1
-with:
-  milliseconds: 1000
+name: Deployment
+on:
+  deployment:
+  push:
+    branches:
+      - master
+
+jobs:
+  deploy:
+    name: Deployment
+    runs-on: ubuntu-latest
+    steps:
+        uses: playstudios/action-github-deployment-details@v1
+        with:
+            application: test-app
+            values_file: Manifests/test-app/values/trunk.yaml
+            key_paths: webapi.image.tag,cdn.image.tag
+        
+            # During a push event, these values will be in the action's output
+            push_environment: trunk
+            push_value: ${{ github.sha }}
+```
+
+See [action.yaml](action.yml) for the action outputs.
+
+### Push Events
+
+For push events, the inputs will be copied directly to the outputs.
+
+### Deployment Events
+
+Send a deployment event using the Github API: https://developer.github.com/v3/repos/deployments/#create-a-deployment
+
+Non-empty values from the
+[deployment webhook](https://developer.github.com/v3/activity/events/types/#deploymentevent)
+will overwrite those supplied via the action inputs. 
+
+```yaml
+environment: .environment
+application: .payload.application
+values_file: .payload.values_file
+key_paths: .payload.key_paths
+value: .sha
 ```

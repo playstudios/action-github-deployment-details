@@ -2,17 +2,20 @@ name: action-github-deployment-details
 description: Github action to output deployment event details
 author: PlayStudios
 inputs:
-    fallback_environment:
-        description: Fallback to this environment when not a deployment event.
-    fallback_application:
-        description: Fallback to this application when not a deployment event.
-    fallback_values_file:
-        description: Fallback to this values file when not a deployment event.
-    fallback_key_paths:
-        description: Fallback to these keys when not a deployment event.
-    fallback_value:
-        description: Fallback to the this value when not a deployment event.
-        default: false
+    application:
+        description: The application to deploy
+        required: true
+    values_file:
+        description: Path to the values file
+        required: true
+    key_paths:
+        description: Comma seperated list of key paths
+        required: true
+
+    push_environment:
+        description: Environment used for push events
+    push_value:
+        description: The value used for push events, usually the git SHA
 outputs:
     environment:
         description: The application environment to deploy into

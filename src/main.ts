@@ -1,20 +1,21 @@
 import * as core from '@actions/core';
-import {promises as fs} from 'fs';
+import {PathLike, promises as fs} from 'fs';
 
 interface githubDeploymentPayload {
-    application: string,
-    values_file: string,
-    key_paths: string,
-    set_value: string,
+    application?: string,
+    values_file?: string,
+    key_paths?: string,
 }
 
 interface githubDeployment {
-    sha: string,
-    environment: string,
-    payload: githubDeploymentPayload
+    deployment: {
+        sha: string,
+        environment: string,
+        payload?: githubDeploymentPayload,
+    }
 }
 
-interface eventDetails {
+export interface eventDetails {
     environment: string,
     application: string,
     valuesFile: string,
@@ -25,15 +26,32 @@ interface eventDetails {
 const EVENT_DEPLOYMENT = 'deployment';
 const EVENT_PUSH = 'push';
 
-function loadJson(buffer: Buffer): eventDetails {
+async function loadJsonFromFile(filePath: PathLike): Promise<Buffer> {
+    if (!await fs.stat(filePath)) {
+        throw new Error(`Deployment event file doesn't exist: "${filePath}"`);
+    }
+    return await fs.readFile(filePath);
+}
+
+function parseDeploymentJson(buffer: Buffer): eventDetails {
     let event = <githubDeployment>JSON.parse(buffer.toString());
     return <eventDetails>{
-        environment: event.environment,
-        application: event.payload.application,
-        valuesFile: event.payload.values_file,
-        keyPaths: event.payload.key_paths,
-        value: event.payload.set_value,
+        environment: event.deployment.environment,
+        application: event.deployment.payload?.application || '',
+        valuesFile: event.deployment.payload?.values_file || '',
+        keyPaths: event.deployment.payload?.key_paths || '',
+        value: event.deployment.sha || '',
     }
+}
+
+export function merge(...events: eventDetails[]): eventDetails {
+    let event = <eventDetails>{};
+    events.forEach((e) => {
+        Object.entries(e).forEach(([key, value]) => {
+            event[key] = value.toString().length > 0 ? value.toString() : event[key];
+        });
+    });
+    return event;
 }
 
 function outputEvent(event: eventDetails) {
@@ -45,36 +63,35 @@ function outputEvent(event: eventDetails) {
 }
 
 async function run() {
+    let event = <eventDetails>{
+        application: core.getInput('application'),
+        valuesFile: core.getInput('values_file'),
+        keyPaths: core.getInput('key_paths'),
+    };
+
     switch (process.env.GITHUB_EVENT_NAME) {
         case EVENT_DEPLOYMENT:
             core.info('Using deployment event');
-            let filePath = process.env.GITHUB_EVENT_PATH;
-            if (filePath === undefined) {
-                core.setFailed('Deployment event doesn\'t have $GITHUB_EVENT_PATH defined');
-                return
-            }
-            if (!await fs.stat(filePath)) {
-                core.setFailed(`Deployment event file doesn't exist: "${filePath}"`);
-                return
-            }
-            let buffer = await fs.readFile(filePath);
-            return outputEvent(loadJson(buffer));
+            let filePath = process.env.GITHUB_EVENT_PATH || '';
+            let buffer = await loadJsonFromFile(filePath);
+            event = merge(event, parseDeploymentJson(buffer));
+            break;
 
         case EVENT_PUSH:
             core.info('Using push event');
-            let fallback = {
-                environment: core.getInput('fallback_environment', {required: true}),
-                application: core.getInput('fallback_application', {required: true}),
-                valuesFile: core.getInput('fallback_values_file', {required: true}),
-                keyPaths: core.getInput('fallback_key_paths', {required: true}),
-                value: core.getInput('fallback_value', {required: true}),
-            };
-            return outputEvent(fallback);
+            event = merge(event, <eventDetails>{
+                environment: core.getInput('push_environment'),
+                value: core.getInput('push_value')
+            });
+            break;
 
         default:
-            core.setFailed(`Unsupported Github Event "${process.env.GITHUB_EVENT_NAME}"`);
-            return
+            throw new Error(`Unsupported Github Event "${process.env.GITHUB_EVENT_NAME}"`);
     }
+
+    outputEvent(event);
 }
 
-run().catch((err) => core.setFailed(err.toString()));
+if (process.env.GITHUB_ACTIONS) {
+    run().catch((err) => core.setFailed(err.toString()));
+}

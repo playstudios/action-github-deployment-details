@@ -14,11 +14,11 @@ jobs:
 
             -   run: npm ci
             -   run: npm run build
-#            -   run: npm test
+            -   run: npm test
             -   uses: ./
                 with:
-                    fallback_push_sha: "true"
-                    fallback_environment: azure-trunk-east-asia
-                    fallback_application: trunk-ea-lucy
-                    fallback_key_paths: webapi.image.tag
-                    fallback_values_file: PlayStudios/lucy/values/azure-trunk-ea.yaml
+                    application: test-app
+                    values_file: Manifests/test-app/values/trunk.yaml
+                    key_paths: webapi.image.tag,cdn.image.tag
+                    push_environment: trunk
+                    push_value: abc123
