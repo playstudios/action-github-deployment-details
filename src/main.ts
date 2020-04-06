@@ -1,7 +1,7 @@
 import * as core from '@actions/core';
-import {PathLike, promises as fs} from 'fs';
+import { PathLike, promises as fs } from 'fs';
 
-interface githubDeploymentPayload {
+export interface githubDeploymentPayload {
     application?: string,
     values_file?: string,
     key_paths?: string,
@@ -33,13 +33,33 @@ async function loadJsonFromFile(filePath: PathLike): Promise<Buffer> {
     return await fs.readFile(filePath);
 }
 
+// parsePayload attempts to parse json strings that have been double/triple stringified
+export function parsePayload(input: string): githubDeploymentPayload | undefined {
+    let p: any;
+    for (let i = 0; i < 5; i++) {
+        p = JSON.parse(input, (_, value) => {
+            try {
+                return JSON.parse(value);
+            } catch {
+                return value;
+            }
+        })
+        input = p;
+        if (typeof p === 'object') {
+            return p;
+        }
+    }
+    return undefined;
+}
+
 function parseDeploymentJson(buffer: Buffer): eventDetails {
     let event = <githubDeployment>JSON.parse(buffer.toString());
+    let payload = event.deployment.payload;
     return <eventDetails>{
         environment: event.deployment.environment,
-        application: event.deployment.payload?.application || '',
-        valuesFile: event.deployment.payload?.values_file || '',
-        keyPaths: event.deployment.payload?.key_paths || '',
+        application: payload?.application || '',
+        valuesFile: payload?.values_file || '',
+        keyPaths: payload?.key_paths || '',
         value: event.deployment.sha || '',
     }
 }

@@ -1,4 +1,4 @@
-import {eventDetails, merge} from './main';
+import { eventDetails, merge, githubDeploymentPayload, parsePayload} from './main';
 
 describe('merge', () => {
     interface mergeTest {
@@ -81,6 +81,39 @@ describe('merge', () => {
     tests.forEach((t) => {
         test(t.name, () => {
             expect(merge(...t.inputs)).toStrictEqual(t.output);
+        });
+    });
+});
+
+describe('parsePayload', () => {
+    interface payloadTest {
+        name: string,
+        payload: string,
+        want: githubDeploymentPayload
+    }
+
+    const tests = <payloadTest[]>[
+        <payloadTest>{
+            name: 'quoted',
+            payload: "\"{\\\"application\\\":\\\"qa-ea-foo\\\",\\\"values_file\\\":\\\"azure/qa-ea.yaml\\\"}\"",
+            want: {
+                application: 'qa-ea-foo',
+                values_file: 'azure/qa-ea.yaml',
+            }
+        },
+        <payloadTest>{
+            name: 'more quoted',
+            payload: "\"\\\"{\\\\\\\"application\\\\\\\":\\\\\\\"trunk-ea-bar-v2\\\\\\\",\\\\\\\"values_file\\\\\\\":\\\\\\\"azure/trunk-ea-v2.yaml\\\\\\\"}\\\"\"",
+            want: {
+                application: 'trunk-ea-bar-v2',
+                values_file: 'azure/trunk-ea-v2.yaml',
+            }
+        }
+    ]
+
+    tests.forEach((t) => {
+        test(t.name, () => {
+            expect(parsePayload(t.payload)).toStrictEqual(t.want);
         });
     });
 });
